@@ -22,6 +22,7 @@ SDL_Event event;
 /* players and npcs */
 SDL_Surface* gBallSurface = NULL;
 SDL_Surface* gPlayerSurface = NULL;
+SDL_Surface* gBrickSurface = NULL;
 
 const int BALL_W = 20;
 const int BALL_H = 20;
@@ -64,13 +65,14 @@ typedef struct _NPC{
 
 BALL ball;
 PLAYER player;
+NPC brick;
 
 /* player and npc functions */
 PLAYER createPlayer(int x, int y, int stepX, SDL_Surface *);
 void movePlayer(PLAYER *);
 BALL createBall(int x, int y, int stepX, int stepY, SDL_Surface *);
 void moveBall(BALL *);
-NPC createNPCs(int x, int y, SDL_Surface *image);
+NPC createNPC(int x, int y, SDL_Surface *image);
 void reflexion(BALL *b, PLAYER *p);
 
 /* init and deinit functions */
@@ -84,8 +86,10 @@ SDL_Surface* loadSurface(char *path);
 int main(int argc, char const *argv[]) {
 
   bool quit = false;
-  SDL_Rect srcRect, dstRect;
-  SDL_Rect srcRect2, dstRect2;
+  int i;
+  SDL_Rect ballSrcRect, ballDstRect;
+  SDL_Rect playerSrcRect, playerDstRect;
+  SDL_Rect brickSrcRect, brickDstRect;
 
   if (!init()) {
     printf("SDL didn't init properly\n");
@@ -97,8 +101,8 @@ int main(int argc, char const *argv[]) {
     else{
 
       /* create ball and player */
-      ball = createBall((SCREEN_WIDTH - BALL_W) / 2, (SCREEN_HEIGHT - BALL_H) / 2, rand() % 2 ? -1: 1, rand() % 2 ? -1: 1, gBallSurface);
-      player = createPlayer((SCREEN_WIDTH - PLAYER_W) / 2, 400, 0, gPlayerSurface);
+      player = createPlayer((SCREEN_WIDTH - PLAYER_W) / 2, 420, 0, gPlayerSurface);
+      ball = createBall((SCREEN_WIDTH - BALL_W) / 2, 420 - PLAYER_H, rand() % 2 ? -1: 1, rand() % 2 ? -1: 1, gBallSurface);
 
       while (!quit) {
 
@@ -133,31 +137,48 @@ int main(int argc, char const *argv[]) {
         /* fill the window with a color */
         SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0x00, 0x00, 0xFF));
 
+        for (i = 0; i < 13; i++) {
+          brick = createNPC((i * (BRICK_W + 5)) + 5, 100, gBrickSurface);
+
+          brickSrcRect.x = 0; brickSrcRect.y = 0;
+          brickSrcRect.w = BRICK_W;
+          brickSrcRect.h = BRICK_H;
+
+          brickDstRect.x = brick.x;
+          brickDstRect.y = brick.y;
+
+          SDL_BlitSurface(brick.image, &brickSrcRect, gSurface, &brickDstRect);
+
+        }
+
         /* move player */
         player.stepX = 0;
         movePlayer(&player);
-        srcRect2.x = 0; srcRect2.y = 0;
-        srcRect2.w = PLAYER_W;
-        srcRect2.h = PLAYER_H;
 
-        dstRect2.x = player.x;
+        playerSrcRect.x = 0; playerSrcRect.y = 0;
+        playerSrcRect.w = PLAYER_W;
+        playerSrcRect.h = PLAYER_H;
 
-        if(SDL_BlitSurface(player.image, &srcRect2, gSurface, &dstRect2) < 0 ) {
-            printf( "SDL could not blit! SDL Error: %s\n", SDL_GetError() );
+        playerDstRect.x = player.x;
+        playerDstRect.y = player.y;
+
+        if(SDL_BlitSurface(player.image, &playerSrcRect, gSurface, &playerDstRect) < 0 ) {
+            printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
             quit = true;
         }
 
         /* mpve ball */
         moveBall(&ball);
-        reflexion(&ball, &player);
-        srcRect.x = 0; srcRect.y = 0;
-        srcRect.w = BALL_W;
-        srcRect.h = BALL_H;
+        /* reflexion(&ball, &player); */
 
-        dstRect.x = ball.x;
-        dstRect.y = ball.y;
+        ballSrcRect.x = 0; ballSrcRect.y = 0;
+        ballSrcRect.w = BALL_W;
+        ballSrcRect.h = BALL_H;
 
-        if(SDL_BlitSurface(ball.image, &srcRect, gSurface, &dstRect) < 0 ) {
+        ballDstRect.x = ball.x;
+        ballDstRect.y = ball.y;
+
+        if(SDL_BlitSurface(ball.image, &ballSrcRect, gSurface, &ballDstRect) < 0 ) {
             printf( "SDL could not blit! SDL Error: %s\n", SDL_GetError() );
             quit = true;
         }
@@ -227,6 +248,10 @@ bool loadMedia(){
   /* init ball and player image */
   gBallSurface = loadSurface("./ball.jpeg");
   gPlayerSurface = loadSurface("./player.jpeg");
+  gBrickSurface = loadSurface("./brick.jpeg");
+
+  /* transparency */
+  SDL_SetColorKey(gBallSurface, SDL_TRUE, SDL_MapRGB(gBallSurface->format, 0xFF, 0xFF, 0xFF));
 
   if (gBallSurface == NULL) {
     printf("SDL couldn't load media, error: %s\n", SDL_GetError());
@@ -250,9 +275,6 @@ SDL_Surface* loadSurface(char *path) {
         /*Convert surface to screen format*/
         optimizedSurface = SDL_ConvertSurface(loadedSurface, gSurface->format, 0);
 
-
-        /* transparency */
-        SDL_SetColorKey(optimizedSurface, SDL_TRUE, SDL_MapRGB(optimizedSurface->format, 0xFF, 0xFF, 0xFF));
 
         if(optimizedSurface == NULL) {
             printf("Unable to optimize image %s, error: %s\n", path, SDL_GetError());
@@ -313,7 +335,17 @@ void moveBall(BALL *ball) {
     }
 }
 void reflexion(BALL *b, PLAYER *p){
-    if ((b->x == p->x) && (b->y == p->y)) {
-      printf("coe rapaizada\n");
-    }
+    printf("ball = (%d, %d)\nplayer = (%d, %d)\n", b->x, b->y, p->x, p->y);
+}
+
+NPC createNPC(int posX, int posY, SDL_Surface *image){
+
+    NPC npc;
+
+    npc.x = posX;
+    npc.y = posY;
+    npc.image = image;
+
+    return npc;
+
 }
