@@ -1,9 +1,6 @@
-# Breakout - Projeto de 2017/1 de Computação para Informática
+# Breakout - Projeto de 2017.1 de Ciência da Computação
 Breakout game in C/SDL2.
-
 Professor: Adriano Joaquim de Oliveira Cruz
-
-19 de maio de 2017
 
 ## 1.Informações Gerais
 Neste trabalho, os alunos terão de desenvolver um jogo em linguagem C, utilizando obrigatoriamente a biblioteca gra ́fica SDL2. O jogo poderá ser desenvolvido em grupos de até três alunos.
