@@ -17,6 +17,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_ttf.h>
 
 /* define boolean type */
 typedef int bool;
@@ -94,15 +95,20 @@ bool init();
 void deinit();
 
 /* game and menu screen functions */
+int screen = 1;
+bool quit = false;
+void menu();
+void config();
 void game();
 
 /* Fixed framerate
- * ---------------
- * Formula: 1000 / (desired fps)
+
+ * Formula: 1000 / TICK_INTERVAL = desired fps
  * TICK_INTERVAL = 16 (~62 fps)
  * TICK_INTERVAL = 17 (~58 fps)
  * TICK_INTERVAL = 33 (~30 fps)
- */
+
+*/
 const unsigned int TICK_INTERVAL = 17;
 
 /* framerate functions */
@@ -126,6 +132,13 @@ Mix_Chunk *gDestroyedBrick = NULL;
 Mix_Chunk *gDestroyedAllBricks = NULL;
 Mix_Chunk *gWonALife = NULL;
 
+/* true-type font declaration */
+TTF_Font *gFont = NULL;
+
+/* text declaration */
+SDL_Color gTextColor = {255, 255, 255};
+SDL_Surface *gMenuText = NULL;
+SDL_Surface *gGameStartText = NULL;
 
 int main(int argc, char const *argv[]) {
 
@@ -133,17 +146,83 @@ int main(int argc, char const *argv[]) {
     printf("SDL didn't init properly\n");
   }
   else{
-    game();
+    while (!quit) {
+      switch (screen) {
+        case 1:
+          menu();
+          break;
+        case 2:
+
+          break;
+        case 3:
+          game();
+          break;
+      }
+    }
   }
 
   deinit();
   return 0;
 }
 
+/* menu, config and game screen functions */
+void menu(){
+
+  /* control flow */
+  bool quitMenu = false;
+
+  while (!quitMenu) {
+    /* handles events */
+    while (SDL_PollEvent(&event) != 0){
+      /* user quit window */
+      switch (event.type) {
+        case SDL_QUIT:
+          quit = true;
+          quitMenu = true;
+          break;
+
+        /* user press a key */
+        case SDL_KEYDOWN:
+          switch (event.key.keysym.sym) {
+            case SDLK_ESCAPE:
+              quit = true;
+              quitMenu = true;
+              break;
+
+            case SDLK_RETURN:
+              screen = 3;
+              quitMenu = true;
+              break;
+          }
+      }
+    }
+
+    /* fill the window with a color */
+    SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0x4A, 0xCA, 0xEF));
+
+    /* present text */
+    if (SDL_BlitSurface(gMenuText, NULL, gSurface, NULL) < 0) {
+      printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
+      quit = true;
+      quitMenu = true;
+    }
+
+    /* Update the surface */
+    SDL_UpdateWindowSurface(gWindow);
+
+    /* Normalize framerate */
+    SDL_Delay(time_left());
+    next_time += TICK_INTERVAL;
+
+  }
+}
+void config(){
+
+}
 void game(){
 
-  /* game control flow */
-  bool quit = false;
+  /* control flow */
+  bool quitGame = false;
 
   /* bricks collumns and lines */
   int l, c;
@@ -152,6 +231,7 @@ void game(){
   SDL_Rect ballSrcRect, ballDstRect;
   SDL_Rect playerSrcRect, playerDstRect;
   SDL_Rect brickSrcRect, brickDstRect;
+  SDL_Rect textPosition;
 
   /* create ball and player */
   BALL ball;
@@ -162,7 +242,7 @@ void game(){
   player = createPlayer((SCREEN_WIDTH - PLAYER_W) / 2, SCREEN_HEIGHT - 50, 0, PLAYER_W, PLAYER_H, gPlayerSurface);
   ball = createBall(BALL_W, BALL_H, gBallSurface);
 
-  while (!quit) {
+  while (!quitGame) {
 
     /* handle events */
     while (SDL_PollEvent(&event) != 0) {
@@ -170,6 +250,7 @@ void game(){
         /* user quit window */
         case SDL_QUIT:
           quit = true;
+          quitGame = true;
           break;
 
         /* user press a key */
@@ -177,6 +258,8 @@ void game(){
           switch (event.key.keysym.sym) {
             case SDLK_ESCAPE:
               quit = true;
+              quitGame = true;
+
               break;
             case SDLK_LEFT:
               player.velX = -10;
@@ -216,6 +299,7 @@ void game(){
     if(SDL_BlitSurface(player.image, &playerSrcRect, gSurface, &playerDstRect) < 0 ) {
         printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
         quit = true;
+        quitGame = true;
     }
 
     /* if the ball is not moving (because the game just started or because the player lost a live)
@@ -223,6 +307,15 @@ void game(){
     if (ball.velX == 0 && ball.velY == 0) {
       ball.x = player.x + (player.width / 2) - (ball.width / 2);
       ball.y = player.y - player.height;
+
+      textPosition.x = SCREEN_WIDTH / 2;
+      textPosition.y = SCREEN_HEIGHT / 2;
+
+      if (SDL_BlitSurface(gGameStartText, NULL, gSurface, &textPosition) < 0) {
+        printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
+        quit = true;
+        quitGame = true;
+      }
     }
     /* move ball */
     else{
@@ -239,8 +332,9 @@ void game(){
     ballDstRect.y = ball.y;
 
     if(SDL_BlitSurface(ball.image, &ballSrcRect, gSurface, &ballDstRect) < 0 ) {
-        printf( "SDL could not blit! SDL Error: %s\n", SDL_GetError() );
+        printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
         quit = true;
+        quitGame = true;
     }
 
     /* loops to place all the bricks */
@@ -258,6 +352,7 @@ void game(){
         if (SDL_BlitSurface(brick.image, &brickSrcRect, gSurface, &brickDstRect)){
           printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
           quit = true;
+          quitGame = true;
         }
 
         collision(&ball, &brick);
@@ -321,6 +416,13 @@ bool init(){
 
               return false;
           }
+
+          /* Initialize SDL_ttf */
+          if(TTF_Init() == -1){
+              printf("SDL couldn't initialize the true-type font, error: %s\n", TTF_GetError());
+
+              return false;
+          }
         }
       }
     }
@@ -339,14 +441,19 @@ void deinit(){
     gBrickSurface = NULL;
 
     /* Free the music */
-    Mix_FreeMusic( gMusic );
+    Mix_FreeMusic(gMusic);
     gMusic = NULL;
+
+    /* Free global font */
+    TTF_CloseFont(gFont);
+    gFont = NULL;
 
     /* Destroy window */
     SDL_DestroyWindow(gWindow);
     gWindow = NULL;
 
     /*Quit SDL subsystems*/
+    TTF_Quit();
     Mix_Quit();
     IMG_Quit();
     SDL_Quit();
@@ -369,51 +476,76 @@ bool loadMedia(){
   /* transparency */
   SDL_SetColorKey(gBallSurface, SDL_TRUE, SDL_MapRGB(gBallSurface->format, 0xFF, 0xFF, 0xFF));
 
+  /* Load sound effects */
+  gLostALife = Mix_LoadWAV("./soundeffects/lostlife.wav");
+  gBounce = Mix_LoadWAV("./soundeffects/bounce.wav");
+  gGameOver = Mix_LoadWAV("./soundeffects/gameover.wav");
+  gDestroyedBrick = Mix_LoadWAV("./soundeffects/destroyedbrick.wav");
+  gDestroyedAllBricks = Mix_LoadWAV("./soundeffects/destroyedallbricks.wav");
+  gWonALife = Mix_LoadWAV("./soundeffects/wonlife.wav");
+
+  /* init text surface and font */
+  gFont = TTF_OpenFont("./fonts/font.ttf", 28);
+  gMenuText = TTF_RenderText_Solid(gFont, "Press enter to start game or esc to quit", gTextColor);
+  gGameStartText = TTF_RenderText_Solid(gFont, "Press space, bitch!", gTextColor);
+
+  /* check if images loaded */
   if (gBallSurface == NULL) {
     printf("SDL couldn't load media, error: %s\n", SDL_GetError());
 
     return false;
   }
+  if (gPlayerSurface == NULL) {
+    printf("SDL couldn't load media, error: %s\n", SDL_GetError());
 
-  /* Load sound effects */
-  gLostALife = Mix_LoadWAV("./soundeffects/lostlife.wav");
+    return false;
+  }
+  if (gBrickSurface == NULL) {
+    printf("SDL couldn't load media, error: %s\n", SDL_GetError());
+
+    return false;
+  }
+
+  /* check if sounds loaded */
   if(gLostALife == NULL){
     printf("SDL couldn't load media, error: %s\n", Mix_GetError());
 
     return false;
   }
-
-  gBounce = Mix_LoadWAV("./soundeffects/bounce.wav");
   if(gBounce == NULL){
     printf("SDL couldn't load media, error: %s\n", Mix_GetError());
 
     return false;
   }
-
-  gGameOver = Mix_LoadWAV("./soundeffects/gameover.wav");
   if(gGameOver == NULL){
     printf("SDL couldn't load media, error: %s\n", Mix_GetError());
 
     return false;
   }
-
-  gDestroyedBrick = Mix_LoadWAV("./soundeffects/destroyedbrick.wav");
   if(gDestroyedBrick == NULL){
     printf("SDL couldn't load media, error: %s\n", Mix_GetError());
 
     return false;
   }
-
-  gDestroyedAllBricks = Mix_LoadWAV("./soundeffects/destroyedallbricks.wav");
   if(gDestroyedAllBricks == NULL){
     printf("SDL couldn't load media, error: %s\n", Mix_GetError());
 
     return false;
   }
-
-  gWonALife = Mix_LoadWAV("./soundeffects/wonlife.wav");
   if(gWonALife == NULL){
     printf("SDL couldn't load media, error: %s\n", Mix_GetError());
+
+    return false;
+  }
+
+  /* check if text loaded */
+  if(gFont == NULL){
+      printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
+
+      return false;
+  }
+  if (gMenuText == NULL) {
+    printf("Failed to load text, error: %s\n", TTF_GetError());
 
     return false;
   }
