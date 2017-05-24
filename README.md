@@ -1,5 +1,6 @@
 # Breakout - Projeto de 2017.1 de Ciência da Computação
 Breakout game in C/SDL2.
+
 Professor: Adriano Joaquim de Oliveira Cruz
 
 ## 1.Informações Gerais
