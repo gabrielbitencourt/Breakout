@@ -7,8 +7,7 @@
  *    5. make the art
  *    6. game area
  *    7. menu/configurations
- *    8. audio track
- *    9. mouse movement
+ *    8. mouse movement
 
 */
 
@@ -95,6 +94,18 @@ void deinit();
 /* load media functions */
 bool loadMedia();
 SDL_Surface* loadSurface(char *path);
+
+/* sound track */
+Mix_Music *gMusic = NULL;
+
+/* sound effects */
+Mix_Chunk *gLostALife = NULL;
+Mix_Chunk *gBounce = NULL;
+Mix_Chunk *gGameOver = NULL;
+Mix_Chunk *gDestroyedBrick = NULL;
+Mix_Chunk *gDestroyedAllBricks = NULL;
+Mix_Chunk *gWonALife = NULL;
+
 
 int main(int argc, char const *argv[]) {
 
@@ -277,6 +288,13 @@ bool init(){
 
               return false;
           }
+
+          /* Initialize SDL_mixer */
+          if(Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0){
+              printf("SDL couldn't initialize the audio mixer, error: %s\n", Mix_GetError());
+
+              return false;
+          }
         }
       }
     }
@@ -294,11 +312,16 @@ void deinit(){
     gPlayerSurface = NULL;
     gBrickSurface = NULL;
 
+    /* Free the music */
+    Mix_FreeMusic( gMusic );
+    gMusic = NULL;
+
     /* Destroy window */
     SDL_DestroyWindow(gWindow);
     gWindow = NULL;
 
     /*Quit SDL subsystems*/
+    Mix_Quit();
     IMG_Quit();
     SDL_Quit();
 }
@@ -316,6 +339,49 @@ bool loadMedia(){
 
   if (gBallSurface == NULL) {
     printf("SDL couldn't load media, error: %s\n", SDL_GetError());
+
+    return false;
+  }
+
+  /* Load sound effects */
+  gLostALife = Mix_LoadWAV("./soundeffects/lostlife.wav");
+  if(gLostALife == NULL){
+    printf("SDL couldn't load media, error: %s\n", Mix_GetError());
+
+    return false;
+  }
+
+  gBounce = Mix_LoadWAV("./soundeffects/bounce.wav");
+  if(gBounce == NULL){
+    printf("SDL couldn't load media, error: %s\n", Mix_GetError());
+
+    return false;
+  }
+
+  gGameOver = Mix_LoadWAV("./soundeffects/gameover.wav");
+  if(gGameOver == NULL){
+    printf("SDL couldn't load media, error: %s\n", Mix_GetError());
+
+    return false;
+  }
+
+  gDestroyedBrick = Mix_LoadWAV("./soundeffects/destroyedbrick.wav");
+  if(gDestroyedBrick == NULL){
+    printf("SDL couldn't load media, error: %s\n", Mix_GetError());
+
+    return false;
+  }
+
+  gDestroyedAllBricks = Mix_LoadWAV("./soundeffects/destroyedallbricks.wav");
+  if(gDestroyedAllBricks == NULL){
+    printf("SDL couldn't load media, error: %s\n", Mix_GetError());
+
+    return false;
+  }
+
+  gWonALife = Mix_LoadWAV("./soundeffects/wonlife.wav");
+  if(gWonALife == NULL){
+    printf("SDL couldn't load media, error: %s\n", Mix_GetError());
 
     return false;
   }
@@ -412,6 +478,9 @@ void moveBall(BALL *ball) {
         if (ball->y + ball->height >= SCREEN_HEIGHT) {
           /* looses life */
 
+          /* play lost a life sound */
+          Mix_PlayChannel(-1, gLostALife, 0);
+
           /* resets position */
           ball->y = (SCREEN_HEIGHT / 2);
           ball->x = (SCREEN_WIDTH / 2);
@@ -431,6 +500,12 @@ void reflexion(BALL *ball, PLAYER *player){
       ball->velY = -ball->velY;
       ball->y += ball->velY;
 
+      /* play bounce sound */
+      if (ball->velX != 0 && ball->velY != 0) {
+        Mix_PlayChannel(-1, gBounce, 0);
+      }
+
+
     }
   }
 }
@@ -441,6 +516,9 @@ void collision(BALL *ball, BRICK *brick){
         /* reflect ball when the brick is hit */
         ball->velY = -ball->velY;
         ball->y += ball->velY;
+
+        /* play boom sound */
+        Mix_PlayChannel(-1, gDestroyedBrick, 0);
 
         /* remove brick */
 
