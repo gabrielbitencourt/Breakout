@@ -1,12 +1,11 @@
-# Breakout
+# Breakout - Projeto de 2017/1 de Computação para Informática
 Breakout game in C/SDL2.
 
-# Projeto de 2017/1 de Computação para Informática
 Professor: Adriano Joaquim de Oliveira Cruz
 
 19 de maio de 2017
 
-# 1.Informações Gerais
+## 1.Informações Gerais
 Neste trabalho, os alunos terão de desenvolver um jogo em linguagem C, utilizando obrigatoriamente a biblioteca gra ́fica SDL2. O jogo poderá ser desenvolvido em grupos de até três alunos.
 
 Além do executável e dos fontes do programa, os alunos deverão elaborar e entregar um manual do usuário, contendo informações sobre como instalar e executar o jogo, bem como informações sobre o jogo em si.
@@ -14,13 +13,13 @@ Além do executável e dos fontes do programa, os alunos deverão elaborar e ent
 Há várias versões deste jogo conhecido como breakout.
 O site http://www.bgames.com/breakout-games/ contem várias versões diferentes deste jogo.
 
-# 2. Avaliação
+## 2. Avaliação
 O jogo será avaliado como um todo, ou seja, os requisitos não receberão pontuações individualmente. Dessa forma, a falta de um ou mais requisitos acarretará na perda de pontos, que poderá ser compensada (não totalmente, claro) através de outros componentes bem desenvolvidos.
 
 Componentes adicionais serão muito bem vistos, desde que implementados de maneira racional. Lembre-se de usar o bom senso para não transformar criatividade em bagunça.
 
 
-# 3. O Jogo
+## 3. O Jogo
 O jogo é composto pelos seguintes elementos:
 
 • Uma area de jogo (retangulo menor do que a tela), delimitada por paredes (as arestas do retangulo).
@@ -41,17 +40,17 @@ Quando todos os tijolos sao destruídos, um novo nível (com os tijolos novament
 A cada 10000 pontos, o numero de vidas restantes do jogador é incrementado.
 
 
-# 4. Requisitos
+## 4. Requisitos
 A seguir, há alguns requisitos do jogo a ser implementado.
 
-# 4.1. Tela Inicial
+### 4.1. Tela Inicial
 O jogo deve possuir uma tela inicial, que deve ser apresentada ao jogador antes da tela com o jogo em si, bem como ao final do jogo.
 Esta tela deve conter o nome do jogo, os nomes dos integrantes do grupo e poss ́ıveis op ̧c ̃oes para o jogo.
 
-# 4.2. Plataforma
+### 4.2. Plataforma
 A plataforma deve ser ser controlada pelo jogador atraves das teclas direcionais (esquerda e direita). O movimento da plataforma deve estar limitado as paredes da area de jogo, de modo que aquela fique sempre no interior desta.
 
-# 4.3. Bolinha
+### 4.3. Bolinha
 Como mencionado, a bolinha deve ter uma determinada velocidade, que pode ser de- composta em suas componentes horizontal (vx) e vertical (vy), de modo que estas sejam tratadas de forma independente.
 
 Caso a componente vx seja positiva, a bolinha ira para a direita; caso seja negativa, a bolinha ira para a esquerda. Caso a componente vy seja positiva, a bolinha ira para baixo; caso seja negativa, a bolinha ira para cima.
@@ -62,11 +61,11 @@ Do mesmo modo, caso a bolinha colida com a plataforma ou com um tijolo, devemos 
 
 Alem disso, a colisao com a plataforma deve influenciar nao so o sinal da componente vx (se for o caso), mas tambem o seu modulo, dependendo do local em que a bolinha tocar a plataforma (metade esquerda ou direita). A tabela 1 mostra como essa componente da velocidade é influenciada. Repare que o fator f, que multiplica ou divide vx, deve ser fixo.
 
-# 4.4. Quadro de Pontuação
+### 4.4. Quadro de Pontuação
 Na tela, ao lado da area de jogo, deve ser apresentado um quadro de pontuação, onde estarao o nível atual, a pontuação e o numero de vidas restantes do jogador.
 
 
-# 5. Componentes Adicionais
+## 5. Componentes Adicionais
 O grupo que seguir e implementar os requisitos de maneira correta recebera uma nota razoavel. Os grupos estao livres para adicionar outros componentes ao jogo para que recebam notas melhores. Por ́em, antes de fazer altera ̧c ̃oes radicais em relaçao ao que foi pedido, leia a seção 2.
 
 Alguns possíveis componentes adicionais:
@@ -79,4 +78,4 @@ Alguns possíveis componentes adicionais:
 
 • As paredes da area de jogo podem ter fendas, o que transformaria a area de jogo num cilindro e faria a bolinha desaparecer de um lado e reaparecer do outro, ao inves de ser rebatida, caso entrasse em contato com uma dessas fendas.
 
-• Opção para dois jogadores. Neste modo de jogo, poder ́ıamos ter, por exemplo, tijolos sendo adicionados a area de um jogador a medida que o outro jogador destroi os seus.
+• Opção para dois jogadores. Neste modo de jogo, poderíamos ter, por exemplo, tijolos sendo adicionados a area de um jogador a medida que o outro jogador destroi os seus.
