@@ -52,6 +52,8 @@ typedef struct _PLAYER{
   int velX;
   int width;
   int height;
+  int lives;
+  int points;
   SDL_Surface* image;
 
 } PLAYER;
@@ -79,7 +81,7 @@ typedef struct _BRICK{
 PLAYER createPlayer(int x, int y, int velX, int width, int height, SDL_Surface *);
 void movePlayer(PLAYER *);
 
-BALL createBall(int x, int y, int velX, int velY, int width, int height, SDL_Surface *);
+BALL createBall(int width, int height, SDL_Surface *);
 void moveBall(BALL *);
 
 BRICK createBrick(int x, int y, int width, int height, SDL_Surface *image);
@@ -90,6 +92,24 @@ void collision(BALL *ball, BRICK *brick);
 /* init and deinit functions */
 bool init();
 void deinit();
+
+/* game and menu screen functions */
+void game();
+
+/* Fixed framerate
+ * ---------------
+ * Formula: 1000 / (desired fps)
+ * TICK_INTERVAL = 16 (~62 fps)
+ * TICK_INTERVAL = 17 (~58 fps)
+ * TICK_INTERVAL = 33 (~30 fps)
+ */
+const unsigned int TICK_INTERVAL = 17;
+
+/* framerate functions */
+unsigned time_left(void);
+
+/* Control variable for optimal FPS handling */
+static Uint32 next_time;
 
 /* load media functions */
 bool loadMedia();
@@ -109,142 +129,148 @@ Mix_Chunk *gWonALife = NULL;
 
 int main(int argc, char const *argv[]) {
 
-  bool quit = false;
-  int l, c;
-  int lifes = 6;
-  int points = 0;
-  SDL_Rect ballSrcRect, ballDstRect;
-  SDL_Rect playerSrcRect, playerDstRect;
-  SDL_Rect brickSrcRect, brickDstRect;
-
-  BALL ball;
-  PLAYER player;
-  BRICK brick;
-
-  if (!init()) {
+  if (!init() || !loadMedia()) {
     printf("SDL didn't init properly\n");
   }
   else{
-    if (!loadMedia()) {
-      printf("SDL didn't load media properly\n");
-    }
-    else{
-
-      /* create ball and player */
-      player = createPlayer((SCREEN_WIDTH - PLAYER_W) / 2, 420, 0, PLAYER_W, PLAYER_H, gPlayerSurface);
-      ball = createBall((SCREEN_WIDTH - BALL_W) / 2, 420 - PLAYER_H, 0, 0, BALL_W, BALL_H, gBallSurface);
-
-      while (!quit) {
-
-        /* handle events */
-        while (SDL_PollEvent(&event) != 0) {
-          switch (event.type) {
-            /* user quit window */
-            case SDL_QUIT:
-              quit = true;
-              break;
-
-            /* user press a key */
-            case SDL_KEYDOWN:
-              switch (event.key.keysym.sym) {
-                case SDLK_ESCAPE:
-                  quit = true;
-                  break;
-                case SDLK_LEFT:
-                  player.velX = -10;
-                  movePlayer(&player);
-
-                  break;
-                case SDLK_RIGHT:
-                  player.velX = 10;
-                  movePlayer(&player);
-                  break;
-
-                case SDLK_SPACE:
-                  if (ball.velX == 0 && ball.velY == 0) {
-                    ball.velX = rand() % 2 ? -1: 1;
-                    ball.velY = -1;
-                  }
-
-                  break;
-              }
-          }
-        }
-
-        /* fill the window with a color */
-        SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0x00, 0x00, 0xFF));
-
-        /* move player */
-        player.velX = 0;
-        movePlayer(&player);
-
-        playerSrcRect.x = 0; playerSrcRect.y = 0;
-        playerSrcRect.w = player.width;
-        playerSrcRect.h = player.height;
-
-        playerDstRect.x = player.x;
-        playerDstRect.y = player.y;
-
-        if(SDL_BlitSurface(player.image, &playerSrcRect, gSurface, &playerDstRect) < 0 ) {
-            printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
-            quit = true;
-        }
-
-        /* move ball */
-        moveBall(&ball);
-        reflexion(&ball, &player);
-
-        ballSrcRect.x = 0; ballSrcRect.y = 0;
-        ballSrcRect.w = ball.width;
-        ballSrcRect.h = ball.height;
-
-        ballDstRect.x = ball.x;
-        ballDstRect.y = ball.y;
-
-        /* if the ball is not moving (because the game just started or because the player lost a live)
-           the ball should be at the center of the platform */
-        if (ball.velX == 0 && ball.velY == 0) {
-          ball.x = player.x + (player.width / 2) - (ball.width / 2);
-          ball.y = player.y - player.height;
-        }
-
-        if(SDL_BlitSurface(ball.image, &ballSrcRect, gSurface, &ballDstRect) < 0 ) {
-            printf( "SDL could not blit! SDL Error: %s\n", SDL_GetError() );
-            quit = true;
-        }
-
-        /* loops to place all the bricks */
-        for (c = 0; c < 13; c++) {
-          for (l = 0; l < 4; l++) {
-            brick = createBrick((c * (BRICK_W + 5) + 5), (l * (BRICK_H + 5) + 5), BRICK_W, BRICK_H, gBrickSurface);
-
-            brickSrcRect.x = 0; brickSrcRect.y = 0;
-            brickSrcRect.w = brick.width;
-            brickSrcRect.h = brick.height;
-
-            brickDstRect.x = brick.x;
-            brickDstRect.y = brick.y;
-
-            if (SDL_BlitSurface(brick.image, &brickSrcRect, gSurface, &brickDstRect)){
-              printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
-              quit = true;
-            }
-
-            collision(&ball, &brick);
-          }
-        }
-
-        /* Update the surface */
-        SDL_UpdateWindowSurface(gWindow);
-
-        /* Not so good solution, depends on your computer */
-        SDL_Delay(10);
-      }
-    }
+    game();
   }
 
   deinit();
   return 0;
+}
+
+void game(){
+
+  /* game control flow */
+  bool quit = false;
+
+  /* bricks collumns and lines */
+  int l, c;
+
+  /* ball, platform and bricks rects */
+  SDL_Rect ballSrcRect, ballDstRect;
+  SDL_Rect playerSrcRect, playerDstRect;
+  SDL_Rect brickSrcRect, brickDstRect;
+
+  /* create ball and player */
+  BALL ball;
+  PLAYER player;
+  BRICK brick;
+
+  /* init ball and player */
+  player = createPlayer((SCREEN_WIDTH - PLAYER_W) / 2, SCREEN_HEIGHT - 50, 0, PLAYER_W, PLAYER_H, gPlayerSurface);
+  ball = createBall(BALL_W, BALL_H, gBallSurface);
+
+  while (!quit) {
+
+    /* handle events */
+    while (SDL_PollEvent(&event) != 0) {
+      switch (event.type) {
+        /* user quit window */
+        case SDL_QUIT:
+          quit = true;
+          break;
+
+        /* user press a key */
+        case SDL_KEYDOWN:
+          switch (event.key.keysym.sym) {
+            case SDLK_ESCAPE:
+              quit = true;
+              break;
+            case SDLK_LEFT:
+              player.velX = -10;
+              movePlayer(&player);
+
+              break;
+            case SDLK_RIGHT:
+              player.velX = 10;
+              movePlayer(&player);
+              break;
+
+            case SDLK_SPACE:
+              if (ball.velX == 0 && ball.velY == 0) {
+                ball.velX = rand() % 2 ? -1: 1;
+                ball.velY = -1;
+              }
+
+              break;
+          }
+      }
+    }
+
+    /* fill the window with a color */
+    SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0x4A, 0xCA, 0xEF));
+
+    /* move player */
+    player.velX = 0;
+    movePlayer(&player);
+
+    playerSrcRect.x = 0; playerSrcRect.y = 0;
+    playerSrcRect.w = player.width;
+    playerSrcRect.h = player.height;
+
+    playerDstRect.x = player.x;
+    playerDstRect.y = player.y;
+
+    if(SDL_BlitSurface(player.image, &playerSrcRect, gSurface, &playerDstRect) < 0 ) {
+        printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
+        quit = true;
+    }
+
+    /* if the ball is not moving (because the game just started or because the player lost a live)
+       the ball should be at the center of the platform */
+    if (ball.velX == 0 && ball.velY == 0) {
+      ball.x = player.x + (player.width / 2) - (ball.width / 2);
+      ball.y = player.y - player.height;
+    }
+    /* move ball */
+    else{
+      moveBall(&ball);
+      reflexion(&ball, &player);
+
+    }
+
+    ballSrcRect.x = 0; ballSrcRect.y = 0;
+    ballSrcRect.w = ball.width;
+    ballSrcRect.h = ball.height;
+
+    ballDstRect.x = ball.x;
+    ballDstRect.y = ball.y;
+
+    if(SDL_BlitSurface(ball.image, &ballSrcRect, gSurface, &ballDstRect) < 0 ) {
+        printf( "SDL could not blit! SDL Error: %s\n", SDL_GetError() );
+        quit = true;
+    }
+
+    /* loops to place all the bricks */
+    for (c = 0; c < 13; c++) {
+      for (l = 0; l < 4; l++) {
+        brick = createBrick((c * (BRICK_W + 5) + 5), (l * (BRICK_H + 5) + 5), BRICK_W, BRICK_H, gBrickSurface);
+
+        brickSrcRect.x = 0; brickSrcRect.y = 0;
+        brickSrcRect.w = brick.width;
+        brickSrcRect.h = brick.height;
+
+        brickDstRect.x = brick.x;
+        brickDstRect.y = brick.y;
+
+        if (SDL_BlitSurface(brick.image, &brickSrcRect, gSurface, &brickDstRect)){
+          printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
+          quit = true;
+        }
+
+        collision(&ball, &brick);
+      }
+    }
+
+    /* Update the surface */
+    SDL_UpdateWindowSurface(gWindow);
+
+    /* Normalize framerate */
+    SDL_Delay(time_left());
+    next_time += TICK_INTERVAL;
+  }
 }
 
 /* init and deinit functions */
@@ -326,16 +352,22 @@ void deinit(){
     SDL_Quit();
 }
 
+/* framerate functions */
+unsigned time_left(void) {
+    unsigned now = SDL_GetTicks();
+    return (next_time <= now) ? 0 : next_time - now;
+}
+
 /* load media and image surfaces */
 bool loadMedia(){
 
   /* init ball and player image */
-  gBallSurface = loadSurface("./ball.png");
-  gPlayerSurface = loadSurface("./player.jpeg");
-  gBrickSurface = loadSurface("./brick.jpeg");
+  gBallSurface = loadSurface("./images/ball.png");
+  gPlayerSurface = loadSurface("./images/player.jpeg");
+  gBrickSurface = loadSurface("./images/brick.jpeg");
 
   /* transparency */
-  SDL_SetColorKey(gBallSurface, SDL_TRUE, SDL_MapRGB(gBallSurface->format, 0, 0xFF, 0xFF));
+  SDL_SetColorKey(gBallSurface, SDL_TRUE, SDL_MapRGB(gBallSurface->format, 0xFF, 0xFF, 0xFF));
 
   if (gBallSurface == NULL) {
     printf("SDL couldn't load media, error: %s\n", SDL_GetError());
@@ -424,17 +456,17 @@ PLAYER createPlayer(int posX, int posY, int velX, int width, int height, SDL_Sur
     player.width = width;
     player.height = height;
     player.image = image;
+    player.lives = 6;
+    player.points = 0;
 
     return player;
 }
-BALL createBall(int posX, int posY, int velX, int velY, int width, int height, SDL_Surface *image){
+BALL createBall(int width, int height, SDL_Surface *image){
 
   BALL ball;
 
-  ball.x = posX;
-  ball.y = posY;
-  ball.velX = velX;
-  ball.velY = velY;
+  ball.velX = 0;
+  ball.velY = 0;
   ball.width = width;
   ball.height = height;
   ball.image = image;
@@ -475,7 +507,7 @@ void moveBall(BALL *ball) {
         ball->velY = -ball->velY;
         ball->y += ball->velY;
 
-        if (ball->y + ball->height >= SCREEN_HEIGHT) {
+        if (ball->y + ball->height == SCREEN_HEIGHT) {
           /* looses life */
 
           /* play lost a life sound */
