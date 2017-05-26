@@ -2,12 +2,17 @@
 
  *    1. remove brick
  *    2. score/lifes system
- *    3. reflection proportional to where the ball hit the platform
- *    4. fix bug when ball hits the corner of the platform/brick
+ *    3. reflection proportional to where the ball hits the platform
  *    5. make the art
  *    6. game area
  *    7. menu/configurations
  *    8. mouse movement
+
+ * BUGS *
+
+ * 1. ball hits the corner of the platform/brick
+ * 2. 2nd and 3rd lines not coliding with ball
+ * 3. ball colision with ground and ceiling not working properly
 
 */
 
@@ -25,70 +30,83 @@ const int false = 0;
 const int true = 1;
 
 /* screen dimension */
-const int SCREEN_WIDTH = 720;
-const int SCREEN_HEIGHT = 480;
+const double SCREEN_WIDTH = 720.0;
+const double SCREEN_HEIGHT = 480.0;
+
+const double GAMEAREA_W = 720.0;
+const double GAMEAREA_H = 480.0;
 
 /* SDL global variables */
 SDL_Window* gWindow = NULL;
 SDL_Surface* gSurface = NULL;
 SDL_Event event;
+SDL_Renderer* gRenderer = NULL;
 
 /* players and npcs definitions (ball, platform and bricks) */
 SDL_Surface* gBallSurface = NULL;
-SDL_Surface* gPlayerSurface = NULL;
-SDL_Surface* gBrickSurface = NULL;
+SDL_Surface* gPlatformSurface = NULL;
+SDL_Surface* gRedBrickSurface = NULL;
+SDL_Surface* gBlueBrickSurface = NULL;
+SDL_Surface* gYellowBrickSurface = NULL;
+SDL_Surface* gGreenBrickSurface = NULL;
 
-const int BALL_W = 20;
-const int BALL_H = 20;
+const double BALL_W = 20.0;
+const double BALL_H = 20.0;
 
-const int PLAYER_W = 100;
-const int PLAYER_H = 20;
+const double PLAYER_W = 100.0;
+const double PLAYER_H = 20.0;
 
-const int BRICK_W = 50;
-const int BRICK_H = 30;
+const double BRICK_W = 50.0;
+const double BRICK_H = 30.0;
+
+const int LINES = 4;
+const int COLUMNS = (GAMEAREA_W - 5) / (BRICK_W + 5);
 
 typedef struct _PLAYER{
-  int x;
-  int y;
-  int velX;
-  int width;
-  int height;
+  double x;
+  double y;
+  double velX;
+  double width;
+  double height;
   int lives;
   int points;
   SDL_Surface* image;
 
 } PLAYER;
 typedef struct _BALL {
-    int x;
-    int y;
-    int velX;
-    int velY;
-    int width;
-    int height;
+    double x;
+    double y;
+    double velX;
+    double velY;
+    double width;
+    double height;
     SDL_Surface* image;
 
 } BALL;
 typedef struct _BRICK{
-  int x;
-  int y;
-  int width;
-  int height;
-  int id;
+  double x;
+  double y;
+  double width;
+  double height;
+  int line;
+  int column;
   SDL_Surface* image;
 
 } BRICK;
 
 /* player and npc functions */
-PLAYER createPlayer(int x, int y, int velX, int width, int height, SDL_Surface *);
+PLAYER createPlayer(double x, double y, double velX, double width, double height, SDL_Surface *);
 void movePlayer(PLAYER *);
 
-BALL createBall(int width, int height, SDL_Surface *);
+BALL createBall(double width, double height, SDL_Surface *);
 void moveBall(BALL *);
 
-BRICK createBrick(int x, int y, int width, int height, SDL_Surface *image);
+BRICK createBrick(double x, double y, double width, double height, int line, int column, SDL_Surface *image);
 
 void reflexion(BALL *ball, PLAYER *player);
 void collision(BALL *ball, BRICK *brick);
+
+bool **removeBricks;
 
 /* init and deinit functions */
 bool init();
@@ -151,9 +169,11 @@ int main(int argc, char const *argv[]) {
         case 1:
           menu();
           break;
-        case 2:
 
+        case 2:
+          config();
           break;
+
         case 3:
           game();
           break;
@@ -170,6 +190,8 @@ void menu(){
 
   /* control flow */
   bool quitMenu = false;
+
+  SDL_Rect textPosition;
 
   while (!quitMenu) {
     /* handles events */
@@ -201,7 +223,10 @@ void menu(){
     SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0x4A, 0xCA, 0xEF));
 
     /* present text */
-    if (SDL_BlitSurface(gMenuText, NULL, gSurface, NULL) < 0) {
+    textPosition.x = (GAMEAREA_W / 2) - (265);
+    textPosition.y = GAMEAREA_H / 2;
+
+    if (SDL_BlitSurface(gMenuText, NULL, gSurface, &textPosition) < 0) {
       printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
       quit = true;
       quitMenu = true;
@@ -217,7 +242,7 @@ void menu(){
   }
 }
 void config(){
-
+  printf("configuraçoes\n");
 }
 void game(){
 
@@ -233,14 +258,26 @@ void game(){
   SDL_Rect brickSrcRect, brickDstRect;
   SDL_Rect textPosition;
 
-  /* create ball and player */
+  /* create ball, player and brick */
   BALL ball;
   PLAYER player;
   BRICK brick;
+  SDL_Surface *colorBrickSurface = NULL;
 
   /* init ball and player */
-  player = createPlayer((SCREEN_WIDTH - PLAYER_W) / 2, SCREEN_HEIGHT - 50, 0, PLAYER_W, PLAYER_H, gPlayerSurface);
+  player = createPlayer((GAMEAREA_W - PLAYER_W) / 2, GAMEAREA_H - 50.0, 0.0, PLAYER_W, PLAYER_H, gPlatformSurface);
   ball = createBall(BALL_W, BALL_H, gBallSurface);
+
+  removeBricks = malloc(COLUMNS * sizeof(bool*));
+  for (c = 0; c < COLUMNS; c++) {
+    removeBricks[c] = malloc(LINES * sizeof(bool));
+  }
+
+  for (c = 0; c < COLUMNS; c++) {
+    for (l = 0; l < LINES; l++) {
+        removeBricks[c][l] = false;
+    }
+  }
 
   while (!quitGame) {
 
@@ -263,19 +300,27 @@ void game(){
               break;
             case SDLK_LEFT:
               player.velX = -10;
-              movePlayer(&player);
 
               break;
             case SDLK_RIGHT:
               player.velX = 10;
-              movePlayer(&player);
+
               break;
 
             case SDLK_SPACE:
               if (ball.velX == 0 && ball.velY == 0) {
-                ball.velX = rand() % 2 ? -1: 1;
-                ball.velY = -1;
+                ball.velX = rand() % 2 ? -3.0: 3.0;
+                ball.velY = -3.0;
               }
+
+              break;
+          }
+          break;
+
+        case SDL_KEYUP:
+          switch (event.key.keysym.sym) {
+            case SDLK_RIGHT: case SDLK_LEFT:
+              player.velX = 0.0;
 
               break;
           }
@@ -283,10 +328,9 @@ void game(){
     }
 
     /* fill the window with a color */
-    SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0x4A, 0xCA, 0xEF));
+    SDL_FillRect(gSurface, NULL, SDL_MapRGB(gSurface->format, 0, 0, 0));
 
     /* move player */
-    player.velX = 0;
     movePlayer(&player);
 
     playerSrcRect.x = 0; playerSrcRect.y = 0;
@@ -308,8 +352,8 @@ void game(){
       ball.x = player.x + (player.width / 2) - (ball.width / 2);
       ball.y = player.y - player.height;
 
-      textPosition.x = SCREEN_WIDTH / 2;
-      textPosition.y = SCREEN_HEIGHT / 2;
+      textPosition.x = GAMEAREA_W / 2;
+      textPosition.y = GAMEAREA_H / 2;
 
       if (SDL_BlitSurface(gGameStartText, NULL, gSurface, &textPosition) < 0) {
         printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
@@ -338,24 +382,54 @@ void game(){
     }
 
     /* loops to place all the bricks */
-    for (c = 0; c < 13; c++) {
-      for (l = 0; l < 4; l++) {
-        brick = createBrick((c * (BRICK_W + 5) + 5), (l * (BRICK_H + 5) + 5), BRICK_W, BRICK_H, gBrickSurface);
+    for (c = 0; c < COLUMNS; c++) {
+      for (l = 0; l < LINES; l++) {
 
-        brickSrcRect.x = 0; brickSrcRect.y = 0;
-        brickSrcRect.w = brick.width;
-        brickSrcRect.h = brick.height;
+        if (removeBricks[c][l] == false) {
 
-        brickDstRect.x = brick.x;
-        brickDstRect.y = brick.y;
+          /* color bricks */
+          switch ((l % LINES)) {
+            case 0:
+              colorBrickSurface = gRedBrickSurface;
+              break;
 
-        if (SDL_BlitSurface(brick.image, &brickSrcRect, gSurface, &brickDstRect)){
-          printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
-          quit = true;
-          quitGame = true;
+            case 1:
+              colorBrickSurface = gGreenBrickSurface;
+              break;
+
+            case 2:
+              colorBrickSurface = gBlueBrickSurface;
+              break;
+
+            case 3:
+              colorBrickSurface = gYellowBrickSurface;
+              break;
+
+            default:
+              printf("SDL couldn't color blocks\n");
+              quit = true;
+              quitGame = true;
+
+          }
+
+          brick = createBrick((c * (BRICK_W + 5) + 5), (l * (BRICK_H + 5) + 5), BRICK_W, BRICK_H, l, c, colorBrickSurface);
+          colorBrickSurface = NULL;
+
+          brickSrcRect.x = 0; brickSrcRect.y = 0;
+          brickSrcRect.w = brick.width;
+          brickSrcRect.h = brick.height;
+
+          brickDstRect.x = brick.x;
+          brickDstRect.y = brick.y;
+
+          if (SDL_BlitSurface(brick.image, &brickSrcRect, gSurface, &brickDstRect)){
+            printf("SDL could not blit! SDL Error: %s\n", SDL_GetError());
+            quit = true;
+            quitGame = true;
+          }
+
+          collision(&ball, &brick);
         }
-
-        collision(&ball, &brick);
       }
     }
 
@@ -396,9 +470,15 @@ bool init(){
       }
       else{
         /* init surface */
+        gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_SOFTWARE);
         gSurface = SDL_GetWindowSurface(gWindow);
         if (gSurface == NULL) {
           printf("SDL couldn't init surface, error: %s\n", SDL_GetError());
+
+          return false;
+        }
+        if (gRenderer == NULL) {
+          printf("SDL couldn't init renderer, error: %s\n", SDL_GetError());
 
           return false;
         }
@@ -433,12 +513,18 @@ bool init(){
 void deinit(){
     /* Free loaded image */
     SDL_FreeSurface(gBallSurface);
-    SDL_FreeSurface(gPlayerSurface);
-    SDL_FreeSurface(gBrickSurface);
+    SDL_FreeSurface(gPlatformSurface);
+    SDL_FreeSurface(gRedBrickSurface);
+    SDL_FreeSurface(gGreenBrickSurface);
+    SDL_FreeSurface(gYellowBrickSurface);
+    SDL_FreeSurface(gBlueBrickSurface);
 
     gBallSurface = NULL;
-    gPlayerSurface = NULL;
-    gBrickSurface = NULL;
+    gPlatformSurface = NULL;
+    gRedBrickSurface = NULL;
+    gGreenBrickSurface = NULL;
+    gYellowBrickSurface = NULL;
+    gBlueBrickSurface = NULL;
 
     /* Free the music */
     Mix_FreeMusic(gMusic);
@@ -447,6 +533,10 @@ void deinit(){
     /* Free global font */
     TTF_CloseFont(gFont);
     gFont = NULL;
+
+    /* destroy renderer */
+    SDL_DestroyRenderer(gRenderer);
+    gRenderer = NULL;
 
     /* Destroy window */
     SDL_DestroyWindow(gWindow);
@@ -470,11 +560,15 @@ bool loadMedia(){
 
   /* init ball and player image */
   gBallSurface = loadSurface("./images/ball.png");
-  gPlayerSurface = loadSurface("./images/player.jpeg");
-  gBrickSurface = loadSurface("./images/brick.jpeg");
+  gPlatformSurface = loadSurface("./images/platform.png");
+  gRedBrickSurface = loadSurface("./images/brickRed.png");
+  gGreenBrickSurface = loadSurface("./images/brickGreen.png");
+  gBlueBrickSurface = loadSurface("./images/brickBlue.png");
+  gYellowBrickSurface = loadSurface("./images/brickYellow.png");
 
   /* transparency */
-  SDL_SetColorKey(gBallSurface, SDL_TRUE, SDL_MapRGB(gBallSurface->format, 0xFF, 0xFF, 0xFF));
+  SDL_SetColorKey(gBallSurface, SDL_TRUE, SDL_MapRGB(gBallSurface->format, 0, 0xFF, 0xFF));
+  SDL_SetColorKey(gPlatformSurface, SDL_TRUE, SDL_MapRGB(gPlatformSurface->format, 0, 0xFF, 0xFF));
 
   /* Load sound effects */
   gLostALife = Mix_LoadWAV("./soundeffects/lostlife.wav");
@@ -495,12 +589,27 @@ bool loadMedia(){
 
     return false;
   }
-  if (gPlayerSurface == NULL) {
+  if (gPlatformSurface == NULL) {
     printf("SDL couldn't load media, error: %s\n", SDL_GetError());
 
     return false;
   }
-  if (gBrickSurface == NULL) {
+  if (gRedBrickSurface == NULL) {
+    printf("SDL couldn't load media, error: %s\n", SDL_GetError());
+
+    return false;
+  }
+  if (gBlueBrickSurface == NULL) {
+    printf("SDL couldn't load media, error: %s\n", SDL_GetError());
+
+    return false;
+  }
+  if (gGreenBrickSurface == NULL) {
+    printf("SDL couldn't load media, error: %s\n", SDL_GetError());
+
+    return false;
+  }
+  if (gYellowBrickSurface == NULL) {
     printf("SDL couldn't load media, error: %s\n", SDL_GetError());
 
     return false;
@@ -549,6 +658,11 @@ bool loadMedia(){
 
     return false;
   }
+  if (gGameStartText == NULL) {
+    printf("Failed to load text, error: %s\n", TTF_GetError());
+
+    return false;
+  }
 
   return true;
 }
@@ -578,7 +692,7 @@ SDL_Surface* loadSurface(char *path) {
 }
 
 /* create player, ball and brick functions */
-PLAYER createPlayer(int posX, int posY, int velX, int width, int height, SDL_Surface *image){
+PLAYER createPlayer(double posX, double posY, double velX, double width, double height, SDL_Surface *image){
 
     PLAYER player;
 
@@ -593,7 +707,7 @@ PLAYER createPlayer(int posX, int posY, int velX, int width, int height, SDL_Sur
 
     return player;
 }
-BALL createBall(int width, int height, SDL_Surface *image){
+BALL createBall(double width, double height, SDL_Surface *image){
 
   BALL ball;
 
@@ -605,7 +719,7 @@ BALL createBall(int width, int height, SDL_Surface *image){
 
   return ball;
 }
-BRICK createBrick(int posX, int posY, int width, int height, SDL_Surface *image){
+BRICK createBrick(double posX, double posY, double width, double height, int line, int column, SDL_Surface *image){
 
     BRICK brick;
 
@@ -614,6 +728,8 @@ BRICK createBrick(int posX, int posY, int width, int height, SDL_Surface *image)
     brick.width = width;
     brick.height = height;
     brick.image = image;
+    brick.line = line;
+    brick.column = column;
 
     return brick;
 }
@@ -621,7 +737,7 @@ BRICK createBrick(int posX, int posY, int width, int height, SDL_Surface *image)
 /* move player and ball */
 void movePlayer(PLAYER *player) {
     /* if the player is not going out of bounds move it */
-    if (!((player->x + player->width + player->velX > SCREEN_WIDTH) || (player->x + player->velX < 0))) {
+    if (!((player->x + player->width + player->velX > GAMEAREA_W) || (player->x + player->velX < 0))) {
       player->x += player->velX;
     }
 }
@@ -631,42 +747,40 @@ void moveBall(BALL *ball) {
     ball->y += ball->velY;
 
     /* if the ball hits the screen limits, bounce it back */
-    if ((ball->x + ball->width > SCREEN_WIDTH) || (ball->x < 0)) {
+    if ((ball->x + ball->width > GAMEAREA_W) || (ball->x < 0.0)) {
         ball->velX = -ball->velX;
         ball->x += ball->velX;
     }
-    if ((ball->y + ball->height > SCREEN_HEIGHT) || (ball->y < 0)) {
-        ball->velY = -ball->velY;
-        ball->y += ball->velY;
+    if (ball->y <= 0.0) {
+      ball->velY = -ball->velY;
+      ball->y += ball->velY;
+    }
+    if (ball->y + ball->height >= GAMEAREA_H) {
+      /* looses life */
 
-        if (ball->y + ball->height == SCREEN_HEIGHT) {
-          /* looses life */
+      /* play lost a life sound */
+      Mix_PlayChannel(-1, gLostALife, 0);
 
-          /* play lost a life sound */
-          Mix_PlayChannel(-1, gLostALife, 0);
+      /* resets position */
+      ball->y = (GAMEAREA_H / 2);
+      ball->x = (GAMEAREA_W / 2);
 
-          /* resets position */
-          ball->y = (SCREEN_HEIGHT / 2);
-          ball->x = (SCREEN_WIDTH / 2);
-
-          ball->velX = 0; ball->velY = 0;
-        }
+      ball->velX = 0.0; ball->velY = 0.0;
     }
 }
 
 /* collision functions */
-/* BUG - when hit platform/brick  the corner */
 void reflexion(BALL *ball, PLAYER *player){
-  if (ball->y + ball->height == player->y) {
-    if ((ball->x >= player->x) && (ball->x <= player->x + player->width)) {
+  if (player->x + player->width >= ball->x && player->x <= ball->x) {
+    if (player->y + player->height >= ball->y + ball->height && player->y <= ball->y + ball->height) {
 
       /* reflect ball when the platform is hit */
       ball->velY = -ball->velY;
       ball->y += ball->velY;
 
       /* play bounce sound */
-      if (ball->velX != 0 && ball->velY != 0) {
-        Mix_PlayChannel(-1, gBounce, 0);
+      if (ball->velX != 0.0 && ball->velY != 0.0) {
+        Mix_PlayChannel(-1, gBounce, 0.0);
       }
 
 
@@ -674,18 +788,17 @@ void reflexion(BALL *ball, PLAYER *player){
   }
 }
 void collision(BALL *ball, BRICK *brick){
-    if (ball->y == brick->y + brick->height) {
-      if ((ball->x >= brick->x) && (ball->x <= brick->x + brick->width)) {
+  if (brick->x + brick->width >= ball->x && brick->x <= ball->x) {
+    if (brick->y + brick->height >= ball->y && brick->y <= ball->y) {
+      /* reflect ball when the brick is hit */
+      ball->velY = -ball->velY;
+      ball->y += ball->velY;
 
-        /* reflect ball when the brick is hit */
-        ball->velY = -ball->velY;
-        ball->y += ball->velY;
+      /* play boom sound */
+      Mix_PlayChannel(-1, gDestroyedBrick, 0);
 
-        /* play boom sound */
-        Mix_PlayChannel(-1, gDestroyedBrick, 0);
-
-        /* remove brick */
-
-      }
+      /* remove brick */
+      removeBricks[brick->column][brick->line] = true;
     }
+  }
 }
