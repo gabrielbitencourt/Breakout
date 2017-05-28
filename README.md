@@ -9,7 +9,7 @@ Professor: Adriano Joaquim de Oliveira Cruz
 
 ### How to build
 
-The game requires SDL2, SDL2_image, SDL2_mixer, SDL2_ttf. To compile use `make` or 
+The game requires [`SDL2`](https://www.libsdl.org/download-2.0.php), [`SDL2_image`](https://www.libsdl.org/projects/SDL_image/), [`SDL2_mixer`](https://www.libsdl.org/projects/SDL_mixer/), [`SDL2_ttf`](https://www.libsdl.org/projects/SDL_ttf/). To compile use `make` or 
 
 `gcc breakout.c -Wall -ansi -g -D_GNU_SOURCE=1 -D_REENTRANT -std=c90 -pedantic -lm -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -o breakout`
 
