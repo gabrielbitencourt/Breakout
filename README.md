@@ -3,7 +3,15 @@ Breakout game in C/SDL2.
 
 Professor: Adriano Joaquim de Oliveira Cruz
 
-## 1.Informações Gerais
+Desenvolvedores:
+##### [Gabriel Bitencourt](https://github.com/gabrielbitencourt)
+##### [David Melo](https://github.com/neverufrj)
+
+### How to build
+
+Use `make` or `gcc breakout.c -Wall -ansi -g -D_GNU_SOURCE=1 -D_REENTRANT -std=c90 -pedantic -lm -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -o breakout`. The game requires SDL2, SDL2_image, SDL2_mixer, SDL2_ttf.
+
+## 1. Informações Gerais
 Neste trabalho, os alunos terão de desenvolver um jogo em linguagem C, utilizando obrigatoriamente a biblioteca gra ́fica SDL2. O jogo poderá ser desenvolvido em grupos de até três alunos.
 
 Além do executável e dos fontes do programa, os alunos deverão elaborar e entregar um manual do usuário, contendo informações sobre como instalar e executar o jogo, bem como informações sobre o jogo em si.
