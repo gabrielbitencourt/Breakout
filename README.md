@@ -9,8 +9,7 @@ Professor: Adriano Joaquim de Oliveira Cruz
 
 ### How to build
 
-The game requires SDL2, SDL2_image, SDL2_mixer, SDL2_ttf.
-Use `make` or 
+The game requires SDL2, SDL2_image, SDL2_mixer, SDL2_ttf. To compile use `make` or 
 
 `gcc breakout.c -Wall -ansi -g -D_GNU_SOURCE=1 -D_REENTRANT -std=c90 -pedantic -lm -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -o breakout`
 
@@ -31,13 +30,14 @@ Componentes adicionais serão muito bem vistos, desde que implementados de manei
 ## 3. O Jogo
 O jogo é composto pelos seguintes elementos:
 
-• Uma area de jogo (retangulo menor do que a tela), delimitada por paredes (as arestas do retangulo).
+- Uma area de jogo (retangulo menor do que a tela), delimitada por paredes (as arestas do retangulo).
 
-• Uma bolinha, que se movimenta com uma certa velocidade e é rebatida pelas paredes da area de jogo.
+- Uma bolinha, que se movimenta com uma certa velocidade e é rebatida pelas paredes da area de jogo.
 
-• Uma plataforma, localizada na parte inferior da area de jogo, com movimento horizontal e controlado pelo jogador. A plataforma tambem rebate a bolinha.
+- Uma plataforma, localizada na parte inferior da area de jogo, com movimento horizontal e controlado pelo jogador. A plataforma tambem rebate a bolinha.
 
-• Uma certa quantidade de tijolos, localizados na parte superior da area de jogo, imoveis e que tambem rebatem a bolinha.
+- Uma certa quantidade de tijolos, localizados na parte superior da area de jogo, imoveis e que tambem rebatem a bolinha.
+
 O objetivo do jogo e destruir todos os tijolos da  ́area de jogo, utilizando, para isto, a bolinha. Um tijolo é destruído após rebater a bolinha. Para cada tijolo destruído, o jogador recebe 100 pontos. Alem disso, o tijolo destruído deve deixar de aparecer na area de jogo.
 
 A bolinha, no entanto, nao deve encostar na parede inferior da area de jogo. Para evitar que isto aconteça, o jogador deve controlar a plataforma e fazer com que a bolinha rebata na plataforma e volte para a parte superior da area de jogo.
@@ -79,12 +79,12 @@ O grupo que seguir e implementar os requisitos de maneira correta recebera uma n
 
 Alguns possíveis componentes adicionais:
 
-• O fator f que modifica a componente vx pode variar de acordo com o ponto em que a bolinha toca a (metade da) plataforma. Assim, f pode ser menor quando a bolinha tocar um ponto mais proximo do meio da plataforma e maior quando a bolinha tocar um ponto mais proximo da ponta da plataforma.
+- O fator f que modifica a componente vx pode variar de acordo com o ponto em que a bolinha toca a (metade da) plataforma. Assim, f pode ser menor quando a bolinha tocar um ponto mais proximo do meio da plataforma e maior quando a bolinha tocar um ponto mais proximo da ponta da plataforma.
 
-• Os tijolos podem possuir diferentes resistencias, que indicam quantas vezes a bolinha deve colidir com o tijolo para que este seja destruído. As diferentes resistencias podem ser representadas por diferentes cores de tijolos. Caso tenhamos tijolos com diferentes resistencias, podemos ter níveis com dificuldades diferentes, onde níveis mais difíceis teriam tijolos mais resistentes que níveis mais faceis.
+- Os tijolos podem possuir diferentes resistencias, que indicam quantas vezes a bolinha deve colidir com o tijolo para que este seja destruído. As diferentes resistencias podem ser representadas por diferentes cores de tijolos. Caso tenhamos tijolos com diferentes resistencias, podemos ter níveis com dificuldades diferentes, onde níveis mais difíceis teriam tijolos mais resistentes que níveis mais faceis.
 
-• Os tijolos podem ter, durante intervalos de tempo específicos, propriedades especiais, de modo que, quando destruídos dentro deste intervalo de tempo, dêem algum benefício ao jogador.
+- Os tijolos podem ter, durante intervalos de tempo específicos, propriedades especiais, de modo que, quando destruídos dentro deste intervalo de tempo, dêem algum benefício ao jogador.
 
-• As paredes da area de jogo podem ter fendas, o que transformaria a area de jogo num cilindro e faria a bolinha desaparecer de um lado e reaparecer do outro, ao inves de ser rebatida, caso entrasse em contato com uma dessas fendas.
+- As paredes da area de jogo podem ter fendas, o que transformaria a area de jogo num cilindro e faria a bolinha desaparecer de um lado e reaparecer do outro, ao inves de ser rebatida, caso entrasse em contato com uma dessas fendas.
 
-• Opção para dois jogadores. Neste modo de jogo, poderíamos ter, por exemplo, tijolos sendo adicionados a area de um jogador a medida que o outro jogador destroi os seus.
+- Opção para dois jogadores. Neste modo de jogo, poderíamos ter, por exemplo, tijolos sendo adicionados a area de um jogador a medida que o outro jogador destroi os seus.
