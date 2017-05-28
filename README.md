@@ -1,11 +1,11 @@
-# Breakout - Projeto de Ciência da Computação 2017.1 UFRJ
+# Breakout - UFRJ 2017.1 Computer Science class project
 Breakout game in C/SDL2.
 
-### Desenvolvedores:
+### Developers:
 - [Gabriel Bitencourt](https://github.com/gabrielbitencourt)
 - [David Melo](https://github.com/neverufrj)
 
-Professor: Adriano Joaquim de Oliveira Cruz
+Teacher: Adriano Joaquim de Oliveira Cruz
 
 ### How to build
 
