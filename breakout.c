@@ -131,7 +131,7 @@ void game();
  * TICK_INTERVAL = 33 (~30 fps)
 
 */
-unsigned int TICK_INTERVAL = 50;
+unsigned int TICK_INTERVAL = 30;
 
 /* framerate functions */
 unsigned time_left(void);
