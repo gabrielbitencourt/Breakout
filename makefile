@@ -8,7 +8,7 @@ CC = gcc
 COMPILER_FLAGS = -Wall -ansi -g -D_GNU_SOURCE=1 -D_REENTRANT -std=c90 -pedantic
 
 #LINKER_FLAGS specifies the libraries we're linking against
-LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
+LINKER_FLAGS = -lm -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf
 
 #BINARIES specifies the name of our exectuable
 BINARIES = breakout

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -59,7 +60,7 @@ const double PLAYER_H = 20.0;
 const double BRICK_W = 50.0;
 const double BRICK_H = 30.0;
 
-const int LINES = 4;
+const int LINES = 9;
 const int COLUMNS = (GAMEAREA_W - 5) / (BRICK_W + 5);
 
 typedef struct _PLAYER{
@@ -76,10 +77,13 @@ typedef struct _PLAYER{
 typedef struct _BALL {
     double x;
     double y;
+    double r;
     double velX;
     double velY;
     double width;
     double height;
+    double xCenter;
+    double yCenter;
     SDL_Surface* image;
 
 } BALL;
@@ -127,7 +131,7 @@ void game();
  * TICK_INTERVAL = 33 (~30 fps)
 
 */
-const unsigned int TICK_INTERVAL = 17;
+unsigned int TICK_INTERVAL = 50;
 
 /* framerate functions */
 unsigned time_left(void);
@@ -248,6 +252,7 @@ void game(){
 
   /* control flow */
   bool quitGame = false;
+  bool gameStart = false;
 
   /* bricks collumns and lines */
   int l, c;
@@ -298,6 +303,7 @@ void game(){
               quitGame = true;
 
               break;
+
             case SDLK_LEFT:
               player.velX = -10;
 
@@ -308,10 +314,23 @@ void game(){
               break;
 
             case SDLK_SPACE:
+              gameStart = true;
               if (ball.velX == 0 && ball.velY == 0) {
-                ball.velX = rand() % 2 ? -3.0: 3.0;
+                ball.velX = rand() % 2 ? 3.0: 3.0;
                 ball.velY = -3.0;
               }
+
+              break;
+
+            case SDLK_UP:
+              TICK_INTERVAL -= 10;
+              if (TICK_INTERVAL <= 0) {
+                TICK_INTERVAL = 1;
+              }
+
+              break;
+            case SDLK_DOWN:
+              TICK_INTERVAL += 10;
 
               break;
           }
@@ -365,7 +384,6 @@ void game(){
     else{
       moveBall(&ball);
       reflexion(&ball, &player);
-
     }
 
     ballSrcRect.x = 0; ballSrcRect.y = 0;
@@ -388,7 +406,7 @@ void game(){
         if (removeBricks[c][l] == false) {
 
           /* color bricks */
-          switch ((l % LINES)) {
+          switch ((l % 4)) {
             case 0:
               colorBrickSurface = gRedBrickSurface;
               break;
@@ -406,7 +424,7 @@ void game(){
               break;
 
             default:
-              printf("SDL couldn't color blocks\n");
+              printf("SDL couldn't color blocks, %d\n", l % LINES);
               quit = true;
               quitGame = true;
 
@@ -427,8 +445,9 @@ void game(){
             quit = true;
             quitGame = true;
           }
-
-          collision(&ball, &brick);
+          if (gameStart) {
+            collision(&ball, &brick);
+          }
         }
       }
     }
@@ -711,6 +730,7 @@ BALL createBall(double width, double height, SDL_Surface *image){
 
   BALL ball;
 
+  ball.r = 10;
   ball.velX = 0;
   ball.velY = 0;
   ball.width = width;
@@ -742,26 +762,36 @@ void movePlayer(PLAYER *player) {
     }
 }
 void moveBall(BALL *ball) {
+
     /* increment ball with its speed */
     ball->x += ball->velX;
     ball->y += ball->velY;
+
+    /* update the center position */
+    ball->xCenter = ball->x + ball->width / 2;
+    ball->yCenter = ball->y + ball->height / 2;
+
 
     /* if the ball hits the screen limits, bounce it back */
     if ((ball->x + ball->width > GAMEAREA_W) || (ball->x < 0.0)) {
         ball->velX = -ball->velX;
         ball->x += ball->velX;
     }
+
+    /* ball hits the ceilling */
     if (ball->y <= 0.0) {
       ball->velY = -ball->velY;
       ball->y += ball->velY;
     }
+
+    /* ball hits ground */
     if (ball->y + ball->height >= GAMEAREA_H) {
       /* looses life */
 
       /* play lost a life sound */
       Mix_PlayChannel(-1, gLostALife, 0);
 
-      /* resets position */
+      /* resets position and velocity */
       ball->y = (GAMEAREA_H / 2);
       ball->x = (GAMEAREA_W / 2);
 
@@ -771,34 +801,135 @@ void moveBall(BALL *ball) {
 
 /* collision functions */
 void reflexion(BALL *ball, PLAYER *player){
-  if (player->x + player->width >= ball->x && player->x <= ball->x) {
-    if (player->y + player->height >= ball->y + ball->height && player->y <= ball->y + ball->height) {
 
-      /* reflect ball when the platform is hit */
-      ball->velY = -ball->velY;
-      ball->y += ball->velY;
+  int xCollision, yCollision;
 
-      /* play bounce sound */
-      if (ball->velX != 0.0 && ball->velY != 0.0) {
-        Mix_PlayChannel(-1, gBounce, 0.0);
-      }
+  /* check the x coordinate of the collision */
+  if (ball->xCenter < player->x){
+    xCollision = player->x;
+  }
+  else if (ball->xCenter > player->x + player->width){
+    xCollision = player->x + player->width;
+  }
+  else{
+    xCollision = ball->xCenter;
+  }
 
+  /* check the y coordinate of the collision */
+  if (ball->yCenter < player->y) {
+    yCollision = player->y;
+  }
+  else if (ball->yCenter > player->y + player->height) {
+    yCollision = player->y + player->height;
+  }
+  else{
+    yCollision = ball->yCenter;
+  }
 
+  /* if the collision is inside the circle, it happened */
+  if (pow((ball->xCenter - xCollision), 2) + pow((ball->yCenter - yCollision), 2) < pow(ball->r, 2)) {
+
+    /* reflect ball when the platform is hit */
+    ball->velY = -ball->velY;
+    ball->y += ball->velY;
+
+    /* play bounce sound */
+    if (ball->velX != 0.0 && ball->velY != 0.0) {
+      Mix_PlayChannel(-1, gBounce, 0.0);
     }
   }
 }
 void collision(BALL *ball, BRICK *brick){
-  if (brick->x + brick->width >= ball->x && brick->x <= ball->x) {
-    if (brick->y + brick->height >= ball->y && brick->y <= ball->y) {
-      /* reflect ball when the brick is hit */
-      ball->velY = -ball->velY;
-      ball->y += ball->velY;
 
-      /* play boom sound */
-      Mix_PlayChannel(-1, gDestroyedBrick, 0);
+  int xCollision, yCollision;
+  int topOrBottom = -1, rightOrLeft = -1; /*0or1*/
+  int collisionSide;
+  bool quina = true;
 
-      /* remove brick */
-      removeBricks[brick->column][brick->line] = true;
+  /* check the x coordinate of the collision */
+  if (ball->xCenter < brick->x){ /* collision at left side or left corner */
+    xCollision = brick->x;
+    rightOrLeft = 0;
+    collisionSide = 1;
+
+  }
+  else if (ball->xCenter > brick->x + brick->width){ /* collision at right side or right corner */
+    xCollision = brick->x + brick->width;
+    rightOrLeft = 1;
+    collisionSide = 1;
+
+  }
+  else{ /* collision at the top or bottom */
+    xCollision = ball->xCenter;
+    quina = false;
+    collisionSide = 0;
+
+  }
+
+  /* check the y coordinate of the collision */
+  if (ball->yCenter < brick->y) { /* collision at the top or up corner */
+    yCollision = brick->y;
+    topOrBottom = 0;
+    collisionSide = 0;
+
+  }
+  else if (ball->yCenter > brick->y + brick->height) { /* collision at bottom or down corner */
+    yCollision = brick->y + brick->height;
+    topOrBottom = 1;
+    collisionSide = 0;
+
+  }
+  else{ /* collision at left or right side */
+    yCollision = ball->yCenter;
+    quina = false;
+    collisionSide = 1;
+
+  }
+
+  /* if the collision is inside the circle, it happened */
+  if (pow((ball->xCenter - xCollision), 2) + pow((ball->yCenter - yCollision), 2) < pow(ball->r, 2)) {
+
+    /* collision left/right -> invert velX */
+    /* collision upside/downside -> invert velY */
+    /* collision corner -> invert both velX and velY */
+    if (quina) {
+      /* COLLISION IN THE CORNER CAN ONLY HAPPEN IF THE CIRCUNSTANCES ARE OK (VIDE V1) */
+      /* printf("quina do bloco [%d][%d], ponto de colisao: (%d, %d), vx = %lf/vy = %lf, tb[%d]/rl[%d]/cs[%d]", brick->column, brick->line, xCollision, yCollision, ball->velX, ball->velY, topOrBottom, rightOrLeft, collisionSide); */
+
+      /* y invert */
+      if ((topOrBottom == 1 && ball->velY < 0 ) || (topOrBottom == 0 && ball->velY > 0)) {
+        ball->velY = -ball->velY;
+        ball->y += ball->velY;
+      }
+
+      /* x invert */
+      if ((rightOrLeft == 1 && ball->velX < 0) || (rightOrLeft == 0 && ball->velX > 0)) {
+        ball->velX = -ball->velX;
+        ball->x += ball->velX;
+      }
     }
+    else{
+      switch (collisionSide) {
+        case 0:
+          /* y invert */
+          ball->velY = -ball->velY;
+          ball->y += ball->velY;
+
+          break;
+
+        case 1:
+          /* x invert */
+          ball->velX = -ball->velX;
+          ball->x += ball->velX;
+
+          break;
+      }
+    }
+
+    /* play boom sound */
+    Mix_PlayChannel(-1, gDestroyedBrick, 0);
+
+    /* remove brick */
+    removeBricks[brick->column][brick->line] = true;
   }
 }
